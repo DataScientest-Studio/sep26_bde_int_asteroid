@@ -6,6 +6,7 @@ comm==0.2.3
 contourpy==1.4.0
 cycler==0.12.1
 debugpy==1.8.22
+dnspython==2.9.0
 executing==2.2.1
 fonttools==4.66.1
 idna==3.20
@@ -30,11 +31,12 @@ pillow==12.3.0
 platformdirs==4.12.3
 prompt_toolkit==3.0.53
 psutil==7.2.2
+psycopg2==2.9.13
 ptyprocess==0.7.0
 pure_eval==0.2.4
 Pygments==2.21.0
+pymongo==4.18.3
 pyparsing==3.3.3
-pyspark==3.5.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.4
 pyzmq==27.2.0

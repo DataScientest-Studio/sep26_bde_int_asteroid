@@ -35,8 +35,9 @@ Project Organization
     │   ├── __init__.py    <- Makes src a Python module
     │   |
     |   ├── ingest
-    │   │   └──data_fetch.py  <- Scripts to download or generate data
-    │   │   
+    │   │   └── fetch_data.py  <- Scripts to download or generate data
+    │   │   └── feed_mongo.py  <- Script to feed downloaded data into MongoDB (bronze layer)
+    │   │
     │   ├── features       <- Scripts to turn raw data into features for modeling
     │   │   └── build_features.py
     │   |
