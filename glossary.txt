@@ -1,0 +1,285 @@
+Here the meaning of each attribute from each collection (cad, sbdb, sentry_s, sentry_r) is explained.
+
+Out of the 18 available APIs from JPL, we require the following for our purposes:
+
+  sentry.api      {}             -> sentry_s   daily
+  sentry.api      {removed:1}    -> sentry_r   daily
+  sbdb_query.api  35 fields      -> sbdb       weekly
+  cad.api         1950-2100      -> cad        weekly
+ 
+Excluded, with reasons:
+  sentry_v    Its aggregates are all present in sentry_s: n_imp, ip, ps_cum, ps_max, ts_max, range.
+  scout       Population largely disjoint from the Sentry list.
+  13 others   More related to mission design, observational planning, ephemeris computation
+========================================================================================
+ 
+ 
+----------------------------------------------------------------------------------------
+A. ENVELOPE KEYS - present in every document in every collection
+----------------------------------------------------------------------------------------
+ 
+ 1. _id                 Document identifier - built by the loader as
+                        "<source file>:<row index>", e.g.
+                        "20261009T200114Z.json:0". 
+ 
+ 2. _source_file        Name of the raw snapshot file this document came from.
+                        The timestamp in the name is when the API was polled,
+                        in UTC, compact ISO-8601 form (YYYYMMDDThhmmssZ).
+ 
+ 3. _row_index          Zero-based position of this record inside that file.
+                        Preserves the order the API returned.
+ 
+ 4. _snapshot_fetched   When the API was called and the payload saved. 
+ 
+ 5. _ingested           When the loader wrote the document into MongoDB.
+                        Always later than _snapshot_fetched.
+ 
+ 6. record              Sub-document holding the un-modified API payload. Keys
+                        inside it are exactly as JPL returned them, values
+                        almost all as strings. 
+
+----------------------------------------------------------------------------------------
+B. COLLECTION: cad - close-approach data
+----------------------------------------------------------------------------------------
+One document = one close approach of one object to Earth at one time, computed
+with one orbit solution. 
+ 
+ 7. des                 Primary designation of the object, e.g. "2026 TR3",
+                        "433". NOT STABLE over time: a provisional designation
+                        is replaced by a number once the orbit is secured, and
+                        the old value stops appearing.
+ 
+ 8. orbit_id            Identifier of the orbit solution used for this
+                        computation. Increments as new observations arrive, so
+                        a change here on an approach already seen means the
+                        approach was re-computed. 
+ 
+ 9. jd                  Time of close approach as a Julian Date in TDB
+                        (Barycentric Dynamical Time). 
+                        It is a continuous count of days starting from 
+                        noon Universal Time on January 1, 4713 BC.
+                        Each day is assigned a sequential integer number, 
+                        and the time of day is represented as a decimal fraction.
+                        (for example, noon is .0 and midnight is .5)
+ 
+10. cd                  The same instant as a calendar date/time in TDB, e.g.
+                        "2026-Oct-09 02:38". Minute resolution only, and the
+                        month is a three-letter abbreviation.
+ 
+11. dist                Best-estimate approach distance in Astronomical Unit (au)
+                        from center of Earth.
+ 
+12. dist_min            Minimum approach distance at 3-sigma, au. 
+ 
+13. dist_max            Maximum approach distance at 3-sigma, au. The spread
+                        between dist_min and dist_max is the useful measure of
+                        how well the encounter is known.
+ 
+14. v_rel               Speed relative to Earth at the moment of close
+                        approach, km/s. Includes the speed-up caused by Earth's
+                        gravity.
+ 
+15. v_inf               Speed relative to a massless body, km/s: the approach
+                        speed with Earth's gravity removed, also called the
+                        hyperbolic excess velocity. Always <= v_rel, and the
+                        gap between them grows as the approach gets closer.
+ 
+16. t_sigma_f           3-sigma uncertainty in the time of close approach.
+ 
+17. h                   Absolute magnitude of H - how bright the object would be 
+                        at 1 au from both Sun and observer at zero phase angle. 
+                        Smaller H means Larger object.
+
+----------------------------------------------------------------------------------------
+C. COLLECTION: sbdb - object identity, orbit and physical parameters
+----------------------------------------------------------------------------------------
+One document = one known small body. This is the enrichment and dimension
+source and it changes slowly. 
+ 
+18. spkid               SPK ID, e.g. 20000433. JPL's permanent numeric
+                        identifier for the object. It is a stable key - 
+                        unlike des and pdes, it survives re-numbering, 
+                        so every fact table points at it. 
+                        It is the only field in any of the four collections that
+                        gives a stable object identifier, and it cannot be
+                        computed from any designation.
+ 
+19. neo                 Near-Earth Object flag, "Y" or "N". 
+                        An NEO has perihelion distance q < 1.3 au.
+ 
+20. pha                 Potentially Hazardous Asteroid flag, "Y" or "N".
+                        It is a size-and-proximity definition only and 
+                        says nothing about whether any impact is actually predicted.
+                        Deterministic from moid and H.
+ 
+21. pdes                Primary designation, e.g. "433". The same value CAD and
+                        Sentry call "des".
+
+22. full_name           Full name with designation, e.g. "   433 Eros
+                        (A898 PA)". 
+ 
+23. class               Orbit class code.
+ 
+24. H                   Absolute magnitude.
+
+25. H_sigma             1-sigma uncertainty on H, magnitudes.
+ 
+26. diameter            Diameter in km. 
+ 
+27. albedo              Geometric albedo: fraction of incident light the
+                        surface reflects, 0-1. Needed to turn H into a real diameter.
+ 
+28. moid                Minimum Orbit Intersection Distance to Earth, in au units: the
+                        closest the two orbits come as curves in space,
+                        regardless of where the bodies are on them. 
+ 
+29. ma                  Mean anomaly at the epoch, in degrees: the object's
+                        position along its orbit, expressed as the angle a body
+                        on a circular orbit of the same period would have swept
+                        since perihelion. Not a physical angle - it is uniform
+                        in time.
+ 
+30. n                   Mean motion, degrees per day: how fast the mean anomaly advances.
+ 
+31. per                 Sidereal orbital period, in days.
+ 
+32. epoch               Epoch of osculation, Julian Date in TDB.
+ 
+33. orbit_id            Orbit solution identifier for this object. 
+ 
+34. last_obs            Date of the most recent observation used in the fit. 
+ 
+35. data_arc            Number of days spanned by the observations used in the
+                        fit. A long arc means a trustworthy orbit.
+ 
+36. n_obs_used          Total number of observations used, optical and radar
+                        combined.
+ 
+37. n_del_obs_used      Number of radar delay (range) observations used. Radar
+                        is rare and sharply improves an orbit.
+ 
+38. n_dop_obs_used      Number of radar Doppler (range-rate) observations used.
+ 
+39. condition_code      Orbit Condition Code (OCC): how well the orbit is
+                        determined. 0 = very well determined, 9 = extremely
+                        uncertain. Roughly logarithmic in the expected
+                        positional runoff per decade. A strong feature for the
+                        classifier and a good filter for junk rows.
+ 
+40. rms                 Normalised root mean squared of the orbit fit residuals. Around 1
+                        means a fit consistent with the stated observation
+                        errors; well below 1 suggests conservative weighting.
+ 
+41. sigma_a             1-sigma uncertainty on the semi-major axis a, au.
+ 
+42. sigma_e             1-sigma uncertainty on the eccentricity e, dimensionless. 
+
+43. sigma_q             1-sigma uncertainty on the perihelion distance q, au.
+
+44. sigma_i             1-sigma uncertainty on the inclination i, degrees.
+ 
+45. sigma_w             1-sigma uncertainty on the argument of perihelion w, in degrees. 
+ 
+46. sigma_tp            1-sigma uncertainty on the time of perihelion passage tp, days. 
+ 
+47. e                   Eccentricity: orbit shape, dimensionless.
+                        0 = circle, between 0 and 1 = ellipse, 1 = parabola,
+                        above 1 = hyperbola (unbound, interstellar).
+ 
+48. a                   Semi-major axis, au: half the long axis of the
+                        ellipse. Sets the orbital period via Kepler's third
+                        law, period in years = a^1.5 for heliocentric orbits.
+ 
+49. q                   Perihelion distance, au: closest the object gets to the
+                        Sun. q = a(1-e). q < 1.3 au is the NEO definition.
+                        A cheap crossing bound: q > 1.017 au means the orbit
+                        cannot reach Earth's.
+ 
+50. i                   Inclination, degrees: tilt of the orbit plane relative
+                        to the ecliptic. Above 90 means retrograde motion.
+ 
+51. om                  Longitude of the ascending node, degrees: where the
+                        orbit crosses the ecliptic going north, measured from
+                        the vernal equinox. Orients the orbit plane in space.
+                        Determines where the nodes are, and therefore whether
+                        Earth can be at the crossing point.
+ 
+52. w                   Argument of perihelion, in degrees: angle from the
+                        ascending node to the perihelion point, measured in the
+                        orbit plane. Orients the ellipse within its plane.
+                        With a and e it fixes the heliocentric distance at each
+                        node, which is the orbit-crossing condition:
+                          ascending   r = a(1-e^2) / (1 + e*cos w)
+                          descending  r = a(1-e^2) / (1 - e*cos w)
+                        Either value near 1 au means the orbits intersect.
+
+----------------------------------------------------------------------------------------
+D. COLLECTION: sentry_s - risk-list summary
+----------------------------------------------------------------------------------------
+One document = one object currently on the Sentry impact-risk list, as of one
+snapshot. 
+ 
+53. des                 Primary designation.
+ 
+54. id                  Sentry's internal object id
+ 
+55. fullname            Full name/designation.
+ 
+56. h                   Absolute magnitude. 
+
+57. diameter            Estimated diameter, km. Derived from H assuming a
+                        uniform sphere of albedo 0.154 - not a measurement, and
+                        accurate only to roughly a factor of two. 
+ 
+58. ip                  Cumulative impact probability: the chance that any of
+                        this object's potential impacts occurs, 0-1.
+ 
+59. n_imp               Number of distinct potential impacts found for this object. 
+ 
+60. ps_max              Maximum hazard rating according to the Palermo technical impact hazard scale.
+                        Palermo scale = It integrates the impact probability, 
+                        the estimated kinetic energy (size and speed), and the time remaining 
+                        until the potential impact into a single value.
+
+61. ps_cum              Cumulative Palermo Scale rating across all of them.
+                        The Palermo Scale is log10 of the risk relative to the
+                        background hazard from objects of similar size over the
+                        same period: 0 means as risky as the background, -2
+                        means 1% of it, -6 means one millionth. Essentially all
+                        real objects are negative. ps_cum >= ps_max always, and
+                        the two are EQUAL whenever n_imp = 1.
+ 
+62. ts_max              Highest Torino Scale rating of any potential impact.
+                        Integer 0-10, the public-facing scale:
+                          0     no hazard
+                          1     routine, no cause for concern
+                          2-4   meriting attention by astronomers
+                          5-7   threatening
+                          8-10  certain collision
+                        Defined only for impacts less than 100 years out.
+                        Almost always 0.
+ 
+63. range               Span of years covered by this object's potential
+                        impacts, as a string, e.g. "2064-2064" for a single
+                        year or "2056-2113" for a spread. 
+ 
+64. v_inf               Entry speed ignoring Earth's gravitational
+                        acceleration, km/s. 
+ 
+65. last_obs            Date of the most recent observation used in the
+                        analysis.
+ 
+66. last_obs_jd         The same date as a Julian Date.
+ 
+----------------------------------------------------------------------------------------
+E. COLLECTION: sentry_r - objects removed from the risk list
+----------------------------------------------------------------------------------------
+One document = one object removed from Sentry because all of its potential
+impacts have been ruled out, normally after more observations arrived. 
+ 
+67. des                 Designation of the object at the time of removal. An
+                        object removed long ago may since have been renumbered
+                        or renamed.
+ 
+68. removed             Date and time (UTC) the object was removed.
+========================================================================================
