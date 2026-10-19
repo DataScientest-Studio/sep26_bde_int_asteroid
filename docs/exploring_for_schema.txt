@@ -1,0 +1,447 @@
+/* 
+Below are the checks that we need to perform in order make sure we answer the below questions:
+
+What attributes need cleaning and why?
+What attributes and relations do I explore to prepare for Postgresql database?
+What are the names and datatypes of different attributes, and how consistent are they?
+What do each of the fields mean and how they play their role in further downstream tasks?
+Are the fields always present from one snapshot to the next?
+
+*/
+
+// 1. Check what attributes exist in the collections.
+
+db.cad.findOne()
+db.sbdb.findOne()
+db.sentry_v.findOne()
+db.sentry_s.findOne()
+db.sentry_r.findOne()
+
+Object.keys(db.cad.findOne().record)
+Object.keys(db.sbdb.findOne().record)
+Object.keys(db.sentry_v.findOne().record)
+Object.keys(db.sentry_s.findOne().record)
+Object.keys(db.sentry_r.findOne().record)
+
+Object.keys(db.cad.findOne().record).length = 11
+Object.keys(db.sbdb.findOne().record).length = 35
+Object.keys(db.sentry_v.findOne().record).length = 10
+Object.keys(db.sentry_s.findOne().record).length = 14
+Object.keys(db.sentry_r.findOne().record).length = 2
+
+Answer:
+
+cad = ['des',      'orbit_id',
+  'jd',       'cd',
+  'dist',     'dist_min',
+  'dist_max', 'v_rel',
+  'v_inf',    't_sigma_f',
+  'h'
+]
+des      			string       
+orbit_id            string       
+jd       			string       
+cd      			string       
+dist     			string       
+dist_min            string       
+dist_max            string       
+v_rel    			string       
+v_inf    			string       
+t_sigma_f           string       
+h        			string       
+
+sbdb = [
+  'spkid',          'neo',            'pha',
+  'pdes',           'full_name',      'class',
+  'H',              'H_sigma',        'diameter',
+  'albedo',         'moid',           'epoch',
+  'orbit_id',       'last_obs',       'data_arc',
+  'n_obs_used',     'n_del_obs_used', 'n_dop_obs_used',
+  'condition_code', 'rms',            'sigma_a',
+  'sigma_e',        'sigma_q',        'sigma_i',
+  'sigma_w',        'sigma_tp',       'e',
+  'a',              'q',              'i',
+  'om',             'w',              'n',
+  'per'				'ma'
+]
+spkid    		number          
+neo      		string          
+pha      		string          
+pdes     		string          
+full_name       string          
+class    		string          
+H         		string          
+H_sigma         number          
+diameter        string          
+albedo   		string          
+moid     		string          
+epoch    		string          
+orbit_id        string          
+last_obs        string          
+data_arc        string          
+n_obs_used      number          
+n_del_obs_used  number          
+n_dop_obs_used  number          
+condition_code  string          
+rms      		string          
+sigma_a         string          
+sigma_e         string          
+sigma_q         string          
+sigma_i         string          
+sigma_w         string          
+sigma_tp        string          
+e        		string          
+a        		string          
+q        		string          
+i        		string          
+om       		string          
+w        		string         
+n 				number
+per 			number
+ma 				number
+
+sentry_v = [
+  'sigma_vi', 'ip',
+  'energy',   'id',
+  'fullname', 'date',
+  'method',   'des',
+  'ts',       'ps'
+]
+sigma_vi         string          
+ip       		 string          
+energy   		 string          
+id       		 string          
+fullname         string          
+date     		 string          
+method   		 string          
+des      		 string          
+ts       		 string          
+ps       		 string          
+
+sentry_s = [
+  'range',    'ps_max',
+  'ps_cum',   'diameter',
+  'h',        'ip',
+  'ts_max',   'des',
+  'id',       'v_inf',
+  'fullname', 'last_obs_jd',
+  'n_imp',    'last_obs'
+]
+range    			string        
+ps_max   			string        
+ps_cum   			string        
+diameter    		string        
+h        			string        
+ip       			string        
+ts_max   			string        
+des      			string        
+id       			string        
+v_inf    			string        
+fullname         	string        
+last_obs_jd      	string        
+n_imp    			number        
+last_obs         	string        
+
+sentry_r = [ 'removed', 'des' ]
+removed  string        
+des      string        
+
+// To get the attribute type, do the following:
+
+var l = [
+    db.cad.findOne().record,
+    db.sbdb.findOne().record,
+    db.sentry_v.findOne().record,
+    db.sentry_s.findOne().record,
+    db.sentry_r.findOne().record
+];
+
+for (var i in l) {
+    print("Record", i);
+    for (var k in l[i]) {
+        print(k, "\t", typeof l[i][k], "\t", l[i][k]);
+    }
+}
+
+------------------------------------------------------------------------------------------------------------------
+
+// 2. What would a single row represent? (Finding primary keys)!
+// Helper function so as not to repeatedly fetch the last pulled document:
+
+var f = {}
+db.snapshots.find({}, {collection: 1}).sort({_id: 1}).forEach(function (s) {
+  f[s.collection] = s._id
+})
+f
+
+db.cad.countDocuments({_source_file: f.cad})
+db.cad.distinct("record.des", {_source_file: f.cad}).length
+
+db.sbdb.countDocuments({_source_file: f.sbdb})
+db.sbdb.distinct("record.pdes", {_source_file: f.sbdb}).length
+db.sbdb.distinct("record.spkid", {_source_file: f.sbdb}).length
+
+db.sentry_s.countDocuments({_source_file: f.sentry_s})
+db.sentry_s.distinct("record.des", {_source_file: f.sentry_s}).length
+
+db.sentry_v.countDocuments({_source_file: f.sentry_v})
+db.sentry_v.distinct("record.des", {_source_file: f.sentry_v}).length
+
+db.sentry_r.countDocuments({_source_file: f.sentry_r})
+db.sentry_r.distinct("record.des", {_source_file: f.sentry_r}).length
+
+/*
+Ratio = countDocuments / distinct(field), always inside one snapshot -> decides
+
+Ratio = 1 -> It can be used as PK
+Ratio > 1 -> Cannot be PK, need more components
+Ratio < 1 -> Cannot be PK, field becomes its own table with a composite key
+
+Conclusion:
+
+
+*/
+
+------------------------------------------------------------------------------------------------------------------
+
+// 3. Finding the second key component in order to define parimary key for cad and sentry_v.
+
+/* 
+Here, we hold the parent fixed, pull every row, and look for the column that changes.
+If a field differs, we have found a candidate key. 
+And, if it differs on every row, then it is unique.
+*/
+// Now, we focus on sentry_v and cad, as they failed to pass the Check-2 above.
+
+// Discovery: hold the parent fixed, read the columns
+
+db.cad.find({_source_file: f.cad, "record.des": "99942"}, {_id: 0, record: 1})
+db.sentry_v.findOne({_source_file: f.sentry_v})
+
+/*
+Output — CAD
+
+variable: jd, cd, dist, dist_min, dist_max, v_rel, v_inf	
+constant: des, orbit_id (220), h (19.09)
+
+Output — sentry_v
+variable: date, ip, ps, sigma_vi, energy
+constant: des, id, fullname, method, ts 
+
+Conclusion: 
+
+jd is the CAD candidate.
+date is the sentry_v candidate.
+*/
+
+// Uniqueness within one object
+
+db.cad.countDocuments({_source_file: f.cad, "record.des": "99942"})
+db.cad.distinct("record.jd", {_source_file: f.cad, "record.des": "99942"}).length
+
+/*
+Output: 3 and 3.
+Conclusion: jd is unique for Apophis. Not yet proof for the other objects.
+*/
+
+// Uniqueness of the composite key across the whole snapshot
+
+var rows = db.cad.find({_source_file: f.cad},
+                       {_id: 0, "record.des": 1, "record.jd": 1}).toArray()
+var keys = rows.map(function (r) { return r.record.des + "|" + r.record.jd })
+keys.length
+new Set(keys).size
+
+/*
+Conclusion:
+
+cad — a natural composite key exists, but its discriminator is a measurement.
+jd is the computed time of closest approach, which shifts when the orbit is refit. 
+Unique within a snapshot, unstable between them.
+
+sentry_v - no natural key exists.
+*/
+------------------------------------------------------------------------------------------------------------------
+
+// 4. Is a field named 'id' actually an identifier?
+
+db.sentry_s.countDocuments({_source_file: f.sentry_s})
+db.sentry_s.distinct("record.id", {_source_file: f.sentry_s}).length
+
+var one = db.sentry_s.findOne({_source_file: f.sentry_s})
+one.record
+
+db.sbdb.findOne({_source_file: f.sbdb, "record.pdes": one.record.des})
+
+// In above, compare id, des, fullname from the first against spkid, pdes, full_name from the second.
+
+/*
+Conclusion:
+
+des = pdes (join key)
+fullname = full_name, but needs trimming.
+
+An object is removed when new observations arrive.
+An object with no prospect of new observations is not awaiting removal, it is stranded. 
+*/
+
+------------------------------------------------------------------------------------------------------------------
+
+// 5. Find null rates per column.
+
+var cols = ["spkid","pdes","full_name","class","H","H_sigma","diameter","albedo",
+            "moid","ma","n","per","epoch","orbit_id","last_obs","data_arc",
+            "n_obs_used","n_del_obs_used","n_dop_obs_used","condition_code","rms",
+            "sigma_a","sigma_e","sigma_q","sigma_i","sigma_w","sigma_tp",
+            "e","a","q","i","om","w"]
+
+var total = db.sbdb.countDocuments({_source_file: f.sbdb})
+
+cols.forEach(function (c) {
+  var isNull  = db.sbdb.countDocuments({_source_file: f.sbdb, ["record."+c]: {$type: "null"}})
+  var missing = db.sbdb.countDocuments({_source_file: f.sbdb, ["record."+c]: {$exists: false}})
+  if (isNull > 0 || missing > 0) {
+    print(c, "| null:", isNull, "| missing:", missing,
+          "|", Math.round((isNull+missing)/total*1000)/10 + "%")
+  }
+})
+print("total rows:", total)
+
+
+
+/*
+
+H | null: 218 | missing: 0 | 0.5%
+H_sigma | null: 18427 | missing: 0 | 42.9%
+diameter | null: 41659 | missing: 0 | 97.1%
+albedo | null: 41716 | missing: 0 | 97.2%
+moid | null: 140 | missing: 0 | 0.3%
+last_obs | null: 2 | missing: 0 | 0%
+data_arc | null: 440 | missing: 0 | 1%
+n_del_obs_used | null: 41808 | missing: 0 | 97.4%
+n_dop_obs_used | null: 41808 | missing: 0 | 97.4%
+condition_code | null: 10 | missing: 0 | 0%
+rms | null: 7 | missing: 0 | 0%
+sigma_a | null: 142 | missing: 0 | 0.3%
+sigma_e | null: 142 | missing: 0 | 0.3%
+sigma_q | null: 142 | missing: 0 | 0.3%
+sigma_i | null: 142 | missing: 0 | 0.3%
+sigma_w | null: 142 | missing: 0 | 0.3%
+sigma_tp | null: 142 | missing: 0 | 0.3%
+total rows: 42923
+
+*/
+
+var sc = ["des","id","h","diameter","v_inf","n_imp","ip","ps_cum","ps_max",
+          "ts_max","range","last_obs","last_obs_jd"]
+var st = db.sentry_s.countDocuments({_source_file: f.sentry_s})
+sc.forEach(function (c) {
+  var isNull  = db.sentry_s.countDocuments({_source_file: f.sentry_s, ["record."+c]: {$type: "null"}})
+  var missing = db.sentry_s.countDocuments({_source_file: f.sentry_s, ["record."+c]: {$exists: false}})
+  if (isNull > 0 || missing > 0) { print(c, "| null:", isNull, "| missing:", missing) }
+})
+print("sentry_s total:", st)
+
+/*
+
+ts_max | null: 2 | missing: 0
+sentry_s total: 2223
+*/
+
+var cc = ["des","orbit_id","jd","cd","dist","dist_min","dist_max",
+          "v_rel","v_inf","t_sigma_f","h"]
+var ct = db.cad.countDocuments({_source_file: f.cad})
+cc.forEach(function (c) {
+  var isNull  = db.cad.countDocuments({_source_file: f.cad, ["record."+c]: {$type: "null"}})
+  var missing = db.cad.countDocuments({_source_file: f.cad, ["record."+c]: {$exists: false}})
+  if (isNull > 0 || missing > 0) { print(c, "| null:", isNull, "| missing:", missing) }
+})
+print("cad total:", ct)
+
+/*
+
+v_inf | null: 20 | missing: 0
+h | null: 5 | missing: 0
+cad total: 31044
+
+*/
+
+/*
+
+Conclusion:
+
+NOT NULL on spkid, pdes, class, orbit_id, n_obs_used, epoch, and the full elements block.
+Nullable on everything else.
+
+*/
+
+======================================================================================================================
+======================================================================================================================
+
+/*
+
+Collection 'object' (comes from sbdb):
+
+
+TRIM        - 'full_name', padding varies with name length
+CAST        - cast to float the fields 'H, H_sigma, diameter, albedo, moid, ma, n, per, epoch, data_arc, rms, 
+				e, a, q, i, om, w, all six sigma_*'; 'condition_code' (measured domain is null + '0'–'9'; 
+				anything else → null + log); 'last_obs' (ISO, 2 nulls)     
+DROP        - field 'neo', as it is always 'Y' (we fetched with 'neo' filter)   
+DERIVE      - 'orbit_id_num' (strip non-digits from 'orbit_id'; keep the raw too)     
+PRESERVE    - pdes, class, pha, orbit_id (pdes is the join key, it is never cast into a number)
+ADD         - 'is_comet' (from class IN ('ETc','HTC','JFC','JFc'))
+
+----------------
+
+Collection 'risk' (comes from sentry_s):
+
+TRIM      
+CAST        - cast to float the fields 'h, diameter, v_inf, ip, ps_cum, ps_max, last_obs_jd'; 
+				nullable and smallint for 'ts_max'
+SPLIT       - 'range' to 'range_start', 'range_end' (1NF)
+DROP        - 'fullname' (already exists in sbdb and here it is in worse format);
+				'last_obs' ('last_obs_jd' gives same info in a better format)
+RESOLVE     - 'des' to 'spkid'  
+PRESERVE    - des, id
+
+----------------
+
+Collection 'removed' (comes from sentry_r):
+
+CAST        - 'removed' to timestamp
+RESOLVE     - 'des' to 'spkid', nullable
+PRESERVE    - des
+
+----------------
+
+Collection 'approach' (comes from cad):
+
+DROP        - 'h' (object level, 2NF violation)
+CAST        - cast the fields to float 'jd, dist, dist_min, dist_max, v_rel, v_inf';
+				'cd' to timestamp
+PRESERVE    - 't_sigma_f'
+DERIVE      - 'orbit_id_num'
+RESOLVE     - 'des' to 'spkid'
+
+----------------
+
+Collection 'alias' (comes from sbdb + sentry_s):
+
+spkid		-	sbdb.spkid
+pdes		-	sbdb.pdes
+full_name	-	sbdb.full_name, trimmed
+sentry_des	-	sentry_s.des
+sentry_id	-	sentry_s.id 
+
+*/
+
+
+
+
+
+
+
+
+
+

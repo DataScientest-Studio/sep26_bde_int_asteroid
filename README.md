@@ -37,7 +37,8 @@ Project Organization
     |   ├── ingest
     │   │   └── fetch_data.py  <- Scripts to download or generate data
     │   │   └── feed_mongo.py  <- Script to feed downloaded data into MongoDB (bronze layer)
-    │   │
+    |   |   └── clean_mongo.py <- Script to clean and create new collections in MongoDB (silver layer)
+    |   | 
     │   ├── features       <- Scripts to turn raw data into features for modeling
     │   │   └── build_features.py
     │   |
@@ -51,5 +52,3 @@ Project Organization
     │   └── config         <- Describe the parameters used in train_model.py and predict_model.py
 
 --------
-
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>

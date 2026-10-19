@@ -1,0 +1,27 @@
+Feeding the cleaned data from MongoDB to PostgreSQL requires creating 8 tables.
+Based on the data feed, these can be divited into 4 categories:
+    1. Data origin
+        a. source_log 
+            This contains one row per raw file fetched. Every other table's source_file points here.
+
+    2. Current state - overwritten on every load
+        a. object_dimension
+            One row per object, from the newest SBDB snapshot. 
+        b. object_alias
+
+    3. Data history - data only gets appended in these 
+        a. orbit
+            One row per object per orbit solution. 
+            A new row appears only when orbit_id changes, not on every fetch.
+        b. sentry_risk
+            One row per object per Sentry fetch — a new row every day, whether anything changed or not.
+            This is the table risk_change is derived from.
+        c. risk_removal
+            One row per designation removed from Sentry. 
+        d. close_approach
+            One row per approach per orbit solution. 
+
+    4. Derived - this is computed from the data loader 
+        a. risk_change
+            One row per object per fetch in which something moved. 
+            Built by comparing consecutive sentry_risk rows. 
