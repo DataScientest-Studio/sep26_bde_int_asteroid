@@ -5,6 +5,7 @@ Here we feed the cleaned data from MongoDB into PostgreSQL database.
 import os
 import sys
 from dotenv import load_dotenv
+from datetime import datetime, timezone 
 from pymongo import MongoClient
 import psycopg2
 from psycopg2.extras import execute_values, Json
@@ -17,6 +18,8 @@ load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 MONGO_DB = os.getenv("MONGO_DB", "asteroid")
+
+EARLY = datetime(1900, 1, 1, tzinfo=timezone.utc)
 
 POSTGRES = {
         "host": os.getenv("PG_HOST", "localhost"),
@@ -135,6 +138,10 @@ def load_orbit(db, cur):
                       key=lambda k: first[k]["_snapshot_fetched"])
         for position in range(len(keys)):
             d = first[keys[position]]
+            if position == 0:
+                valid_from = EARLY
+            else:
+                valid_from = d["_snapshot_fetched"]
             if position + 1 < len(keys):
                 valid_to = first[keys[position + 1]]["_snapshot_fetched"]
                 is_current = False
@@ -151,7 +158,7 @@ def load_orbit(db, cur):
                          d.get("n_dop_obs_used"), d.get("data_arc"),
                          d.get("last_obs"), d.get("sigma_a"), d.get("sigma_e"),
                          d.get("sigma_q"), d.get("sigma_i"), d.get("sigma_w"),
-                         d.get("sigma_tp"), d["_snapshot_fetched"], valid_to,
+                         d.get("sigma_tp"), valid_from, valid_to,
                          is_current, d["_source_file"]))
 
     insert(cur, "orbit",

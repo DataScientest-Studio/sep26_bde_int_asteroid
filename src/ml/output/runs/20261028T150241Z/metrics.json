@@ -1,0 +1,27 @@
+{
+  "model": "LogisticRegression(class_weight=balanced), log1p on skewed features",
+  "pr_auc_test": 0.0493,
+  "pr_auc_baseline_one_column": 0.0533,
+  "base_rate_test": 0.0042,
+  "threshold": 0.6735,
+  "threshold_precision": 0.0247,
+  "threshold_recall": 0.2162,
+  "threshold_lift_over_random": 5.94,
+  "threshold_flags_per_snapshot": 81,
+  "n_train_rows": 35553,
+  "n_train_positives": 157,
+  "n_test_rows": 8902,
+  "n_test_positives": 37,
+  "n_snapshots_labelled": 20,
+  "split_rule": "newest 20% of snapshots, minimum 2",
+  "train_window": [
+    "2026-10-09 20:00:54.123000+00:00",
+    "2026-10-22 13:57:57.105000+00:00"
+  ],
+  "test_window": [
+    "2026-10-23 08:08:25.649000+00:00",
+    "2026-10-27 08:44:08.971000+00:00"
+  ],
+  "trained_at": "20261028T150241Z",
+  "sklearn_version": "1.9.1"
+}

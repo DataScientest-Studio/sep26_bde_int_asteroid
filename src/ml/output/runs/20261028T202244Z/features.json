@@ -1,0 +1,48 @@
+{
+  "features": [
+    "ip",
+    "ps_cum",
+    "n_imp",
+    "h",
+    "v_inf",
+    "range_span",
+    "days_since_last_obs",
+    "moid",
+    "e",
+    "rms",
+    "condition_code",
+    "n_obs_used",
+    "data_arc",
+    "class"
+  ],
+  "numeric": [
+    "ip",
+    "ps_cum",
+    "n_imp",
+    "h",
+    "v_inf",
+    "range_span",
+    "days_since_last_obs",
+    "moid",
+    "e",
+    "rms",
+    "condition_code",
+    "n_obs_used",
+    "data_arc"
+  ],
+  "categorical": [
+    "class"
+  ],
+  "log_transformed": [
+    "ip",
+    "days_since_last_obs",
+    "data_arc",
+    "n_obs_used"
+  ],
+  "target": "will_change",
+  "id_columns": [
+    "des",
+    "spkid",
+    "fetched"
+  ]
+}
