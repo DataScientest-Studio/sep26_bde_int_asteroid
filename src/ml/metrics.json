@@ -1,0 +1,18 @@
+{
+  "model": "LogisticRegression on log1p + scaled features",
+  "question": "will an object on the Sentry risk list be removed?",
+  "accuracy_test": 0.8133,
+  "roc_auc_test": 0.8792,
+  "pr_auc_test": 0.9158,
+  "pr_auc_majority_baseline": 0.5581,
+  "pr_auc_by_feature_group": {
+    "orbital_only": 0.8905,
+    "observational_only": 0.8541,
+    "both": 0.9158
+  },
+  "n_rows": 5035,
+  "n_removed": 2809,
+  "n_features": 26,
+  "trained_at": "2026-11-02T09:56:07Z",
+  "sklearn_version": "1.9.1"
+}

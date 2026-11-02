@@ -1,69 +1,54 @@
 """
-Score objects with the promoted model.
-
-    from ml.predict import predict_one, predict_listed, model_info
-
-The artifacts are loaded once, on import. If train.py promotes a new model,
-the API process must be restarted (or call reload()).
+We score objects with the trained model.
 """
 
 import json
 import os
-
 import joblib
 
 from dataset import load_data
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CURRENT = os.path.join(HERE, "output", "current")
 
 _model = None
 _features = None
 _metrics = None
-_version = None
 _frame = None
 
 
-def reload():
+def load_model():
     """Load the artifacts and the scoring frame. Called once on import."""
-    global _model, _features, _metrics, _version, _frame
+    global _model, _features, _metrics, _frame
 
-    if not os.path.exists(os.path.join(CURRENT, "model.joblib")):
-        raise RuntimeError(
-            "no promoted model in %s - run train.py first" % CURRENT)
+    path = os.path.join(HERE, "model.joblib")
+    if not os.path.exists(path):
+        raise RuntimeError("no model at %s - run train.py first" % path)
 
-    _model = joblib.load(os.path.join(CURRENT, "model.joblib"))
+    _model = joblib.load(path)
 
-    with open(os.path.join(CURRENT, "features.json")) as f:
+    with open(os.path.join(HERE, "features.json")) as f:
         _features = json.load(f)
-    with open(os.path.join(CURRENT, "metrics.json")) as f:
+    with open(os.path.join(HERE, "metrics.json")) as f:
         _metrics = json.load(f)
-    with open(os.path.join(CURRENT, "VERSION")) as f:
-        _version = f.read().strip()
-
-    # 5,000 rows - cheap to hold in memory, and it avoids a database round
-    # trip per request.
     _frame = load_data()
     _frame[_features["boolean"]] = _frame[_features["boolean"]].astype(int)
 
-    # the contract check. if the query gained, lost or reordered a column
-    # since the model was trained, refuse rather than predict on scrambled
-    # input - the model would not raise, it would just be wrong.
     have = [c for c in _frame.columns
             if c not in _features["id_columns"] + [_features["target"]]]
     if have != _features["features"]:
         raise RuntimeError(
-            "dataset.sql no longer matches features.json.\n"
-            "  expected: %s\n  got:      %s" % (_features["features"], have))
+            "dataset.sql no longer matches features.json\n"
+            "  expected: %s\n  got:      %s"
+            % (_features["features"], have))
 
 
 def _score(rows):
-    X = rows[_features["features"]]
-    return _model.predict_proba(X)[:, 1]
+    return _model.predict_proba(rows[_features["features"]])[:, 1]
 
 
 def predict_one(spkid):
-    """Probability that this object's impact risk gets ruled out."""
+    """Probability that this object's impact risk gets ruled out.
+    Returns None if the object has never been on the risk list."""
     rows = _frame[_frame["spkid"] == spkid]
     if len(rows) == 0:
         return None
@@ -74,29 +59,26 @@ def predict_one(spkid):
         "pdes": str(row["pdes"].iloc[0]),
         "probability_removed": round(float(_score(row)[0]), 4),
         "already_removed": bool(row["removed"].iloc[0]),
-        "model_version": _version,
     }
 
 
 def predict_listed():
     """Score every object still on the risk list, most likely to be cleared
-    first. This is what the brief asks for: the model is trained on resolved
-    outcomes and scores the objects whose outcome is still open."""
+    first. This is what the brief asks for: trained on resolved outcomes,
+    applied to the objects whose outcome is still open."""
     rows = _frame[_frame["removed"] == 0].copy()
     rows["probability_removed"] = _score(rows).round(4)
-
-    out = rows[["spkid", "pdes", "probability_removed"]]
-    return out.sort_values("probability_removed", ascending=False)
+    return (rows[["spkid", "pdes", "probability_removed"]]
+            .sort_values("probability_removed", ascending=False))
 
 
 def model_info():
     info = dict(_metrics)
-    info["version"] = _version
-    info["n_features"] = len(_features["features"])
+    info["n_scored"] = int((_frame["removed"] == 0).sum())
     return info
 
 
-reload()
+load_model()
 
 
 if __name__ == "__main__":

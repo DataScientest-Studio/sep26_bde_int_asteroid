@@ -61,6 +61,36 @@
   "categorical": [
     "class"
   ],
+  "orbital": [
+    "moid",
+    "q",
+    "a",
+    "e",
+    "i",
+    "om",
+    "w",
+    "h",
+    "class"
+  ],
+  "observational": [
+    "h_sigma",
+    "n_obs_used",
+    "n_del_obs_used",
+    "n_dop_obs_used",
+    "data_arc",
+    "days_since_last_obs",
+    "rms",
+    "sigma_a",
+    "sigma_e",
+    "sigma_q",
+    "sigma_i",
+    "sigma_w",
+    "sigma_tp",
+    "condition_code",
+    "has_h_sigma",
+    "has_diameter",
+    "has_radar"
+  ],
   "target": "removed",
   "id_columns": [
     "spkid",
