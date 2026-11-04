@@ -10,45 +10,57 @@ Project Organization
 ------------
 
     ├── LICENSE
-    ├── README.md          <- The top-level README for developers using this project.
-    ├── data
-    │   ├── raw            <- The original, immutable data dump.
-    │   ├── examples        <- Sample data
+    ├── README.md                   <- First thing to read to understand the concept and structure
+    ├── data                        <- Contains data in JSON format
+    │   ├── raw                         <- The original, immutable data dump.
+    │   └── samples                     <- Sample data
     │
-    ├── logs               <- Logs from training and predicting
+    |
+    ├── logs                        <- Logs from scheduled run to fetch data
+    |    └── fetch.log               
+    │ 
+    |   
+    ├── notebooks                   <- Jupyter notebooks used to explore
+    │   ├── eda.ipynb                   <- Data exploration
+    |   └── Modelling.ipynb             <- Modelling for machine learning algorithm                
+    │                         
     │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
-    │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
-    │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-    │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
-    │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
-    │
-    ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
+    ├── docs                        <- Documentation aiding understanding project
+    │   ├── exploring_for_schema.txt    <- Explores MongoDB to reach decisions about Postgres DB        
+    │   ├── glossary.txt                <- Orbital mechanics terms and their meaning
+    │   └── psql_schema.txt             <- Logic behind each Postgres table
+    |   
+    |
+    |── src/                        <- Core source code
+    │   ├── ingest/                     <- Pipeline that is runs as scheduled 
+    │   |    ├── fetch_data.py              <- Fetches raw data from JPL APIs
+    │   |    ├── feed_mongo.py              <- Feeds raw data to MongoDB
+    │   |    ├── clean_mongo.py             <- Cleans and formats json data in MongoDB
+    │   |    └── feed_postgres.py           <- Cleaned data fed into Postgres tables
     │   |
-    |   ├── ingest
-    │   │   └── fetch_data.py  <- Scripts to download or generate data
-    │   │   └── feed_mongo.py  <- Script to feed downloaded data into MongoDB (bronze layer)
-    |   |   └── clean_mongo.py <- Script to clean and create new collections in MongoDB (silver layer)
-    |   | 
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
+    |   ├── sql/                    <- Queries
+    │   |    ├── pg_schema.sql          <- DDL for structured and cleaned data
+    │   |    ├── dataset.sql            <- Labeled row per listed object                         
+    │   |    └── ml_predictions.sql     <- DDL for the predictions log
+    |   |
+    |   ├── ml/                     <- Machine learning model building
+    │   |    ├── dataset.py             <- Reads and runs sql/dataset.sql. Returns a dataframe
+    │   |    ├── train.py               <- Trains and fits ML model
+    │   |    ├── model.joblib           <- The fitted pipeline with preprocessing 
+    │   |    ├── features.json          <- The columns that predict.py validates against
+    │   |    ├── metrics.json           <- What the model scored
+    │   |    └── predict.py             <- Predicts objects with probability                        
     │   |
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
+    |   ├── dashboard/
+    │   │    ├── analytics.py       <- Statistics that feed into respective APIs
+    │   │    └── app.py             <- Streamlit. Calls the API over HTTP.
     │   │
-    │   ├── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │   │   └── visualize.py
-    │   └── config         <- Describe the parameters used in train_model.py and predict_model.py
+    │   └── api/
+    │       ├── main.py             <- FastAPI app
+    │       └── routes.py           <- Endpoints for API. Calls analytics.py and predict.py.
+    |
+    |
+    └── requirements.txt            <- The requirements file for reproducing the analysis 
+   
 
---------
+    
