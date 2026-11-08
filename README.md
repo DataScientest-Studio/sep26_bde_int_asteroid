@@ -49,7 +49,8 @@ Project Organization
     │   |    ├── model.joblib           <- The fitted pipeline with preprocessing 
     │   |    ├── features.json          <- The columns that predict.py validates against
     │   |    ├── metrics.json           <- What the model scored
-    │   |    └── predict.py             <- Predicts objects with probability                        
+    |   |    ├── predict.py             <- Predicts objects with probability 
+    │   |    └── score.py               <- Scores every currently-listed object            
     │   |
     |   ├── dashboard/
     │   │    ├── analytics.py       <- Statistics that feed into respective APIs

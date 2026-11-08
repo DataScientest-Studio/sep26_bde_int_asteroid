@@ -38,17 +38,27 @@ def run(sql):
 def run_params(sql, params):
     return pd.read_sql(text(sql), engine, params=params)
 
+def to_records(df):
+    """DataFrame -> list of dicts, with NaN replaced by None.
+
+    JSON has no NaN. pandas produces NaN for every SQL NULL in a numeric
+    column, and the encoder rejects it with "Out of range float values are
+    not JSON compliant". astype(object) must come first, or pandas coerces
+    the None straight back to NaN.
+    """
+    return df.astype(object).where(pd.notna(df), None).to_dict("records")
+
 def records(sql):
     """
     For each SQL query, it returns the records in JSON format
     """
-    return run(sql).to_dict("records")
+    return to_records(run(sql))
 
 def records_params(sql, params):
     """
     For each SQL query, it returns the records in JSON format along with the parameters
     """
-    return run_params(sql, params).to_dict("records")
+    return to_records(run_params(sql, params))
 
 #---------
 # Overview
@@ -400,7 +410,7 @@ def object_detail(designation):
     """, {"spkid": spkid})
 
     return {
-        "object": obj.to_dict("records")[0],
+        "object": to_records(obj)[0],
         "current_orbit": orbit[0] if orbit else None,
         "current_risk": risk[0] if risk else None,
         "removal": removal[0] if removal else None,
@@ -513,7 +523,116 @@ def changes_on(date=None):
         "changes": rows,
     }
 
+#---------------
+# Prediction log
+#---------------
+"""
+This is written weekly by score.py.
+The model is fixed, so a score that moves means that the object's data moved.
+That is, JPL refit its orbit during the week.
+"""
+
+def prediction_scores(limit=25):
+    latest = records("""
+        select p.pdes,
+               p.spkid,
+               p.probability_removed,
+               p.scored_on::text,
+               d.class,
+               d.h
+        from ml_predictions p
+        left join object_dimension d on d.spkid = p.spkid
+        where p.scored_on = (select max(scored_on) from ml_predictions)
+        order by p.probability_removed desc
+        limit %d
+    """ % int(limit))
+
+    movers = records("""
+        select curr.pdes,
+               curr.probability_removed as this_week,
+               prev.probability_removed as last_week,
+               round((curr.probability_removed
+                      - prev.probability_removed)::numeric, 4) as change
+        from ml_predictions curr
+        join ml_predictions prev on prev.spkid = curr.spkid
+        where curr.scored_on = (select max(scored_on) from ml_predictions)
+          and prev.scored_on = (select max(scored_on) from ml_predictions
+                                 where scored_on < (select max(scored_on)
+                                                      from ml_predictions))
+        order by abs(curr.probability_removed - prev.probability_removed) desc
+        limit 15
+    """)
+
+    return {"scored_on": latest[0]["scored_on"] if latest else None,
+            "most_likely_to_be_cleared": latest,
+            "biggest_movers": movers}
+
+#----------------
+# Scoring history
+#----------------
+
+def prediction_history():
+    return {"runs": records("""
+        select scored_on::text,
+               count(*) as objects_scored,
+               round(avg(probability_removed)::numeric, 4) as mean_probability,
+               round(max(probability_removed)::numeric, 4) as highest,
+               round(min(probability_removed)::numeric, 4) as lowest
+        from ml_predictions
+        group by scored_on
+        order by scored_on
+    """)}
+
+#-----------------------
+# Prospective validation
+#-----------------------
+"""
+Every row here is a prediction made before an outcome that has since happened. 
+"""
+
+def prediction_outcomes():
+    hits = records("""
+        select p.pdes,
+               p.scored_on::text,
+               p.probability_removed,
+               r.removed::date::text as actually_removed
+        from ml_predictions p
+        join risk_removal r on r.spkid = p.spkid
+        where r.removed > p.scored_on
+        order by r.removed desc, p.probability_removed desc
+        limit 100
+    """)
+
+    summary = records("""
+        select case when probability_removed >= 0.5 then 'likely'
+                    else 'unlikely' end as model_said,
+               count(*) as objects_scored,
+               count(*) filter (where spkid in (
+                   select spkid from risk_removal
+                   where spkid is not null)) as removed_since
+        from ml_predictions
+        where scored_on = (select min(scored_on) from ml_predictions)
+        group by model_said
+    """)
+
+    for row in summary:
+        row["removal_rate_pct"] = (
+            round(100.0 * row["removed_since"] / row["objects_scored"], 1)
+            if row["objects_scored"] else 0.0)
+
+    return {
+        "baseline_date": (records(
+            "select min(scored_on)::text as d from ml_predictions")[0]["d"]),
+        "summary": summary,
+        "confirmed": hits,
+        "note": ("each confirmed row is a prediction recorded before the "
+                 "removal occurred; the counts are small until the log has "
+                 "run for several weeks"),
+    }
+
 if __name__ == "__main__":
+    import json
+
     for name, fn in [("overview", overview),
                      ("data_quality", data_quality),
                      ("observation_gaps", observation_gaps),
@@ -521,7 +640,10 @@ if __name__ == "__main__":
                      ("size_distribution", size_distribution),
                      ("risk_ranking", risk_ranking),
                      ("upcoming_approaches", upcoming_approaches),
-                     ("changes_on", changes_on)]:
+                     ("changes_on", changes_on),
+                     ("prediction_scores", prediction_scores),
+                     ("prediction_history", prediction_history),
+                     ("prediction_outcomes", prediction_outcomes)]:
         print("=" * 60)
         print(name)
         print("=" * 60)
