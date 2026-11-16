@@ -1,0 +1,62 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: asteroid-postgres
+    environment:
+      POSTGRES_DB: asteroid
+      POSTGRES_USER: asteroid
+      POSTGRES_PASSWORD: asteroid
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./src/sql/pg_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./src/sql/ml_predictions.sql:/docker-entrypoint-initdb.d/02_predictions.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asteroid"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7.0
+    container_name: asteroid-mongo
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodata:/data/db
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    image: asteroid-api
+    container_name: asteroid-api
+    env_file: .env.docker
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    image: asteroid-dashboard
+    container_name: asteroid-dashboard
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  mongodata:

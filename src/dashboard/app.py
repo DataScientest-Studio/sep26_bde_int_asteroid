@@ -26,6 +26,88 @@ def get(path, **params):
         st.stop()
     return r.json()
 
+LABELS = {
+    # identity
+    "des": "Designation", "pdes": "Designation", "spkid": "JPL ID",
+    "full_name": "Name", "class": "Orbit class", "is_comet": "Comet",
+
+    # physical
+    "h": "Brightness (H)", "h_sigma": "Brightness uncertainty",
+    "diameter": "Diameter (km)", "albedo": "Albedo",
+    "has_diameter": "Diameter measured",
+
+    # risk
+    "ip": "Impact probability",
+    "ps_cum": "Palermo scale (cumulative)",
+    "ps_max": "Palermo scale (highest)",
+    "ts_max": "Torino scale",
+    "n_imp": "Possible impacts",
+    "v_inf": "Approach speed (km/s)",
+    "range_start": "First possible impact",
+    "range_end": "Last possible impact",
+    "range_span": "Impact window (years)",
+
+    # observation
+    "last_observed": "Last observed", "last_obs_ts": "Last observed",
+    "days_since_last_obs": "Days since last seen",
+    "n_obs_used": "Observations used",
+    "n_del_obs_used": "Radar range measurements",
+    "n_dop_obs_used": "Radar speed measurements",
+    "has_radar": "Radar observed",
+    "data_arc": "Observation span (days)",
+    "rms": "Orbit fit error (arcsec)",
+    "condition_code": "Orbit quality (0 best, 9 worst)",
+
+    # orbit
+    "moid": "Closest approach to Earth's orbit (AU)",
+    "a": "Orbit size (AU)", "e": "Eccentricity",
+    "q": "Closest to Sun (AU)", "i": "Tilt from Earth's orbit (deg)",
+    "om": "Node longitude (deg)", "w": "Perihelion argument (deg)",
+    "epoch": "Reference date", "orbit_id_num": "Solution",
+    "valid_from": "In use from", "valid_to": "In use until",
+    "is_current": "Current", "pha": "Potentially hazardous",
+
+    # approaches
+    "approach_date": "Date", "dist": "Distance (AU)",
+    "dist_lunar": "Distance (lunar distances)",
+    "dist_min": "Closest possible (AU)", "dist_max": "Furthest possible (AU)",
+    "v_rel": "Relative speed (km/s)", "t_sigma_f": "Timing uncertainty",
+
+    # changes
+    "fetched": "Snapshot", "prev_fetched": "Previous snapshot",
+    "ip_before": "Impact probability before",
+    "ip_after": "Impact probability after",
+    "d_ip": "Change in probability",
+    "ps_cum_before": "Palermo before", "ps_cum_after": "Palermo after",
+    "d_ps_cum": "Change in Palermo",
+    "n_imp_before": "Impacts before", "n_imp_after": "Impacts after",
+    "d_n_imp": "Change in impacts",
+    "left_sentry": "Left the risk list",
+
+    # model
+    "probability_removed": "Chance of being cleared",
+    "removed": "Removed", "scored_on": "Scored on",
+    "this_week": "This week", "last_week": "Last week", "change": "Change",
+    "actually_removed": "Actually removed",
+    "model_said": "Model said", "objects_scored": "Objects scored",
+    "removed_since": "Removed since", "removal_rate_pct": "Removal rate (%)",
+
+    # pipeline
+    "collection": "Source", "fetches": "Fetches",
+    "latest_fetch": "Most recent", "api_version": "API version",
+    "avg_rows_returned": "Average rows", "objects": "Objects",
+    "bucket": "Time since last seen", "size_bin": "Diameter",
+    "all_objects": "Whole catalogue", "on_risk_list": "On the risk list",
+    "period": "Period", "approaches": "Approaches",
+    "closest_au": "Closest (AU)",
+}
+
+def show(rows, **kwargs):
+    """Render records as a table with readable column names."""
+    df = pd.DataFrame(rows)
+    return st.dataframe(df.rename(columns=LABELS),
+                        use_container_width=True, **kwargs)
+
 PAGES = ["Overview", "Risk list", "What changed?", "Observation gaps",
          "Close approaches", "Size distribution", "Object lookup",
          "Prediction", "Does the model work?", "Data quality"]
@@ -40,7 +122,7 @@ st.sidebar.caption("Model: %s" % ("loaded" if health["model_loaded"] else "not a
 # Overview 
 
 if page == "Overview":
-    st.title("Asteroid close-approach and risk tracker")
+    st.title("Asteroid Risk Tracker")
     st.caption("Data from NASA/JPL, with the day-by-day history of the Sentry risk list reconstructed from daily snapshots.")
 
     d = get("/stats/overview")
@@ -52,8 +134,8 @@ if page == "Overview":
     e.metric("Changes recorded", "{:,}".format(d["risk_changes_logged"]))
 
     st.subheader("What the catalogue contains")
-    classes = pd.DataFrame(d["by_class"]).set_index("class")
-    st.bar_chart(classes["objects"])
+    classes = pd.DataFrame(d["by_class"]).rename(columns=LABELS).set_index("Orbit class")
+    st.bar_chart(classes["Objects"])
     st.caption("APO, ATE and AMO are near-Earth asteroid classes. APO and ATE cross Earth's orbit; AMO approaches without crossing.")
 
 # Risk list 
@@ -64,7 +146,7 @@ elif page == "Risk list":
 
     d = get("/risk", limit=limit)
     st.info(d["note"])
-    st.dataframe(pd.DataFrame(d["objects"]), use_container_width=True)
+    show(d["objects"])
     st.caption("Sorted by cumulative Palermo scale, not by raw impact probability. "
                "The probability leaders are metre-scale objects "
                "whose orbits are poorly determined - that is high uncertainty, not high danger.")
@@ -86,7 +168,7 @@ elif page == "What changed?":
         a.metric("Changes", d["count"])
         b.metric("Left the list", d["left_sentry"])
         c.metric("Risk updated", d["updated"])
-        st.dataframe(pd.DataFrame(d["changes"]), use_container_width=True)
+        show(d["changes"])
 
 # Observation gaps 
 
@@ -101,8 +183,7 @@ elif page == "Observation gaps":
                "so the list states information about our ignorance, than danger.")
 
     st.subheader("Longest unobserved")
-    st.dataframe(pd.DataFrame(d["longest_unobserved"]),
-                 use_container_width=True)
+    show(d["longest_unobserved"])
 
 # Close approaches 
 
@@ -121,7 +202,7 @@ elif page == "Close approaches":
     u = get("/approaches", days=days, max_dist=lunar * 0.00257)
     st.caption("%d approaches within %d days and %.1f lunar distances."
                % (u["count"], u["window_days"], u["max_distance_lunar"]))
-    st.dataframe(pd.DataFrame(u["approaches"]), use_container_width=True)
+    show(u["approaches"])
 
 # Size distribution 
 
@@ -159,17 +240,16 @@ elif page == "Object lookup":
 
             if d["current_risk"]:
                 st.subheader("Current risk assessment")
-                st.json(d["current_risk"])
+                show([{LABELS.get(k, k): v
+                       for k, v in d["current_risk"].items()}])
 
             if d["upcoming_approaches"]:
                 st.subheader("Upcoming approaches")
-                st.dataframe(pd.DataFrame(d["upcoming_approaches"]),
-                             use_container_width=True)
+                show(d["upcoming_approaches"])
 
             if d["risk_history"]:
                 st.subheader("Risk history")
-                st.dataframe(pd.DataFrame(d["risk_history"]),
-                             use_container_width=True)
+                show(d["risk_history"])
 
 # Prediction
 
@@ -193,8 +273,7 @@ elif page == "Prediction":
     st.subheader("Most likely to be cleared next")
     s = get("/model/scores", limit=25)
     if s and s["most_likely_to_be_cleared"]:
-        st.dataframe(pd.DataFrame(s["most_likely_to_be_cleared"]),
-                     use_container_width=True)
+        show(s["most_likely_to_be_cleared"])
     else:
         st.info("No scores logged yet - score.py has not run.")
 
@@ -220,8 +299,7 @@ elif page == "Does the model work?":
 
         if d["confirmed"]:
             st.subheader("Confirmed outcomes")
-            st.dataframe(pd.DataFrame(d["confirmed"]),
-                         use_container_width=True)
+            show(d["confirmed"])
 
     st.divider()
     st.subheader("How the model was evaluated?")
@@ -248,7 +326,7 @@ elif page == "Data quality":
 
     d = get("/stats/data-quality")
     st.subheader("Sources")
-    st.dataframe(pd.DataFrame(d["sources"]), use_container_width=True)
+    show(d["sources"])
 
     st.subheader("Missing values")
     a, b = st.columns(2)

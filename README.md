@@ -61,7 +61,7 @@ Project Organization
     │       └── routes.py           <- Endpoints for API. Calls analytics.py and predict.py.
     |
     |
-    └── requirements.txt            <- The requirements file for reproducing the analysis 
+    └── requirements/               <- The requirements file for reproducing the analysis 
    
 
     
