@@ -15,14 +15,13 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       PG_HOST: postgres
       PG_PORT: 5432
-      PG_DB: asteroid
-      PG_USER: asteroid
-      PG_PASSWORD: asteroid
+      PG_DB: "${PG_DB}"
+      PG_USER: "${PG_USER}"
+      PG_PASSWORD: "${PG_PASSWORD}"
       MONGO_URI: mongodb://mongo:27017/
       MONGO_DB: asteroid
       RAW_DATA_DIR: /opt/airflow/data/raw
       JPL_CONTACT_EMAIL: ${JPL_CONTACT_EMAIL}
-    user: "${AIRFLOW_UID:-1000}:0"
     volumes: &airflow-volumes
       - ./dags:/opt/airflow/dags
       - ./src:/opt/airflow/src
@@ -45,7 +44,6 @@ services:
       airflow-init:
         condition: service_completed_successfully
     environment: *airflow-env
-    user: "${AIRFLOW_UID:-1000}:0"
     volumes: *airflow-volumes
     command: scheduler
     restart: unless-stopped
@@ -60,7 +58,6 @@ services:
       airflow-init:
         condition: service_completed_successfully
     environment: *airflow-env
-    user: "${AIRFLOW_UID:-1000}:0"
     volumes: *airflow-volumes
     ports:
       - "8080:8080"
@@ -71,11 +68,11 @@ services:
     image: postgres:16
     container_name: asteroid-postgres
     environment:
-      POSTGRES_DB: asteroid
-      POSTGRES_USER: asteroid
-      POSTGRES_PASSWORD: asteroid
+      POSTGRES_DB: "${PG_DB}"
+      POSTGRES_USER: "${PG_USER}"
+      POSTGRES_PASSWORD: "${PG_PASSWORD}"
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./src/sql/pg_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
@@ -91,7 +88,7 @@ services:
     image: mongo:7.0
     container_name: asteroid-mongo
     ports:
-      - "27018:27017"
+      - "27017:27017"
     volumes:
       - mongodata:/data/db
     restart: unless-stopped

@@ -7,8 +7,6 @@ echo "SHOW SCHEMA"
 docker compose exec -T postgres psql -U asteroid -d asteroid -c "\dt"
 
 echo "LOADING RAW DATA"
-export MONGO_URI=mongodb://localhost:27018/
-export PG_PORT=5433
 
 python3 src/ingest/feed_mongo.py
 python3 src/ingest/clean_mongo.py

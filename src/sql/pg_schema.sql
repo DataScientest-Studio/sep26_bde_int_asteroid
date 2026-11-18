@@ -1,4 +1,4 @@
- DROP TABLE IF EXISTS source_log CASCADE;
+DROP TABLE IF EXISTS source_log CASCADE;
 
 CREATE TABLE source_log(
 	source_file VARCHAR PRIMARY KEY,

@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 set -euo pipefail
 
 echo "START POSTGRES"
@@ -40,4 +38,3 @@ echo
 echo
 echo "  Airflow:  http://localhost:8080   (asteroid / asteroid)"
 echo
-free -h
