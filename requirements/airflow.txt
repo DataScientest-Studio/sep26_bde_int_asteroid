@@ -1,0 +1,4 @@
+pymongo==4.18.3
+psycopg2-binary==2.9.13
+requests==2.34.2
+python-dotenv==1.2.4
