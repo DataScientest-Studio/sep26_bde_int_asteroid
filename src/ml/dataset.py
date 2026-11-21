@@ -27,7 +27,7 @@ def load_data():
     engine = engine_url
     try:
         with engine.connect() as conn:
-            df = pd.read_sql(text(sql), conn)
+            df = pd.read_sql(sql, conn)    
     finally:
         engine.dispose()
     return df

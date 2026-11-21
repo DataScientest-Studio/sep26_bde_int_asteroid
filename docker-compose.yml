@@ -9,10 +9,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
     environment: &airflow-env
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://asteroid:asteroid@postgres:5432/airflow
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@postgres:5432/${PG_DB}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__PARALLELISM: "2"
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "2"
+      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
       PG_HOST: postgres
       PG_PORT: 5432
       PG_DB: "${PG_DB}"
@@ -28,17 +33,26 @@ services:
       - ./data/raw:/opt/airflow/data/raw
       - ./airflow-logs:/opt/airflow/logs
     command: >
-      bash -c "airflow db migrate &&
-               airflow users create --username ${AIRFLOW_ADMIN_USER}
-                 --password ${AIRFLOW_ADMIN_PASSWORD}
-                 --firstname asteroid --lastname asteroid
-                 --role Admin --email ${JPL_CONTACT_EMAIL} || true"
+      bash -c '
+        set -e
+        airflow db migrate
+        if airflow users list | grep -q "${AIRFLOW_ADMIN_USER}"; then
+          echo "Airflow admin already exists."
+        else
+          airflow users create \
+            --username "${AIRFLOW_ADMIN_USER}" \
+            --password "${AIRFLOW_ADMIN_PASSWORD}" \
+            --firstname Asteroid \
+            --lastname Admin \
+            --role Admin \
+            --email "${JPL_CONTACT_EMAIL}"
+        fi
+        '
 
   airflow-scheduler:
     build:
       context: .
       dockerfile: docker/Dockerfile.airflow
-    image: asteroid-airflow
     container_name: asteroid-airflow-scheduler
     depends_on:
       airflow-init:
@@ -52,7 +66,6 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.airflow
-    image: asteroid-airflow
     container_name: asteroid-airflow-webserver
     depends_on:
       airflow-init:
@@ -71,26 +84,28 @@ services:
       POSTGRES_DB: "${PG_DB}"
       POSTGRES_USER: "${PG_USER}"
       POSTGRES_PASSWORD: "${PG_PASSWORD}"
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./src/sql/pg_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./src/sql/ml_predictions.sql:/docker-entrypoint-initdb.d/02_predictions.sql:ro
-
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U asteroid"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
+      timeout: 5s
       retries: 10
     restart: unless-stopped
 
   mongo:
     image: mongo:7.0
     container_name: asteroid-mongo
-    ports:
-      - "27017:27017"
     volumes:
       - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
   api:
@@ -99,12 +114,13 @@ services:
       dockerfile: docker/Dockerfile.api
     image: asteroid-api
     container_name: asteroid-api
-    env_file: .env.docker
-    ports:
-      - "8000:8000"
+    env_file:
+      - .env.docker
     depends_on:
       postgres:
         condition: service_healthy
+    ports:
+      - "8000:8000"
     restart: unless-stopped
 
   dashboard:
