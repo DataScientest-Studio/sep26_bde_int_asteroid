@@ -15,6 +15,7 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${PG_USER}:${PG_PASSWORD}@postgres:5432/${PG_DB}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__CORE__PARALLELISM: "2"
       AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "2"
       AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: "1"
@@ -77,6 +78,42 @@ services:
     command: webserver
     restart: unless-stopped
 
+  loader:
+      build:
+        context: .
+        dockerfile: docker/Dockerfile.airflow
+      image: asteroid-airflow
+      container_name: asteroid-loader
+      depends_on:
+        postgres:
+          condition: service_healthy
+        mongo:
+          condition: service_healthy
+      environment: *airflow-env
+      volumes: *airflow-volumes
+      command:
+        - bash
+        - -c
+        - |
+          set -e
+          python3 /opt/airflow/src/ingest/feed_mongo.py
+          python3 /opt/airflow/src/ingest/clean_mongo.py
+          python3 /opt/airflow/src/ingest/feed_postgres.py
+      restart: "no"
+
+  mongo:
+    image: mongo:7.0
+    container_name: asteroid-mongo
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
   postgres:
     image: postgres:16
     container_name: asteroid-postgres
@@ -95,18 +132,36 @@ services:
       retries: 10
     restart: unless-stopped
 
-  mongo:
-    image: mongo:7.0
-    container_name: asteroid-mongo
+  ml:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    image: asteroid-api
+    container_name: asteroid-ml
+    env_file:
+      - .env.docker
     volumes:
-      - mongodata:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    restart: unless-stopped
+      - ./src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      loader:
+        condition: service_completed_successfully
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        cd /app/src/ml
+        if [ -f model.joblib ]; then
+          cp model.joblib model.prev.joblib
+          cp metrics.json metrics.prev.json
+        fi
+        python3 dataset.py
+        python3 train.py
+        python3 predict.py
+        python3 score.py
+    restart: "no"
 
   api:
     build:
@@ -116,9 +171,13 @@ services:
     container_name: asteroid-api
     env_file:
       - .env.docker
+    volumes:
+      - ./src:/app/src
     depends_on:
       postgres:
         condition: service_healthy
+      ml:
+        condition: service_completed_successfully
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -134,8 +193,10 @@ services:
     ports:
       - "8501:8501"
     depends_on:
-      - api
-    restart: unless-stopped
+      api:
+        condition: service_started
+      loader:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

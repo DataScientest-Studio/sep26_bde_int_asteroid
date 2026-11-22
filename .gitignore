@@ -95,5 +95,6 @@ target/
 .env.*
 !.env.example
 
-# Airflow logs
+# Logs
 airflow-logs/
+logs/

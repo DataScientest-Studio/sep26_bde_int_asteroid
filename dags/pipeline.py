@@ -27,8 +27,7 @@ with DAG(
     description="Loads raw data into MongoDB and PostgreSQL and score objects using ML",
     default_args=default_args,
     start_date=pendulum.datetime(2026, 11, 1, tz="Europe/Berlin"),
-    schedule=None,
-    #schedule="0 10 * * *",
+    schedule="0 10 * * *",
     catchup=False,
     max_active_runs=1,
     tags=["asteroid"],
@@ -51,36 +50,6 @@ with DAG(
         bash_command="python3 /opt/airflow/src/ingest/feed_postgres.py",
     )
 
-    # ML
-
-    create_dataset = BashOperator(
-        task_id="create_dataset",
-        bash_command="python3 /opt/airflow/src/ml/dataset.py",
-    )
-
-    train_model = BashOperator(
-        task_id="train_model",
-        bash_command="python3 /opt/airflow/src/ml/train.py",
-    )
-
-    make_predictions = BashOperator(
-        task_id="make_predictions",
-        bash_command="python3 /opt/airflow/src/ml/predict.py",
-    )
-
-    score_model = BashOperator(
-        task_id="score_model",
-        bash_command="python3 /opt/airflow/src/ml/score.py",
-    )
-
     # Task
 
-    (
-        feed_mongo
-        >> clean_mongo
-        >> feed_postgres
-        >> create_dataset
-        >> train_model
-        >> make_predictions
-        >> score_model
-    )
+    feed_mongo >> clean_mongo >> feed_postgres
