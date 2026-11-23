@@ -10,6 +10,8 @@ for folder in [PATH, SOURCE, os.path.join(SOURCE, 'ml'), os.path.join(SOURCE, 'd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import router
+from prometheus_fastapi_instrumentator import Instrumentator
+
 
 asteroid = FastAPI(
     title='Asteroid Risk Tracker',
@@ -25,6 +27,8 @@ asteroid.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+Instrumentator(should_group_status_codes=False).instrument(asteroid).expose(asteroid)
 
 asteroid.include_router(router)
 
