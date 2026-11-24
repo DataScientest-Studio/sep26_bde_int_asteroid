@@ -7,10 +7,10 @@ for folder in [PATH, SOURCE, os.path.join(SOURCE, 'ml'), os.path.join(SOURCE, 'd
     if folder not in sys.path:
         sys.path.insert(0, folder)
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from routes import router
-from prometheus_fastapi_instrumentator import Instrumentator
+from fastapi import FastAPI # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware # noqa: E402
+from routes import router # noqa: E402
+from prometheus_fastapi_instrumentator import Instrumentator # noqa: E402
 
 
 asteroid = FastAPI(

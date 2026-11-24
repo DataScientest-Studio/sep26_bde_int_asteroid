@@ -10,10 +10,9 @@ This code instead provides a DAG for the rest of the data pipeline:
     - prepare for consumption
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from airflow.utils.trigger_rule import TriggerRule
 import pendulum
 
 default_args = {

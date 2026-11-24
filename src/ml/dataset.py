@@ -34,6 +34,5 @@ def load_data():
 
 if __name__ == "__main__":
     df = load_data()
-    print(f.closed)
     print("Number of rows and columns are: ", df.shape)
     print("\nColumns: ", list(df.columns))
