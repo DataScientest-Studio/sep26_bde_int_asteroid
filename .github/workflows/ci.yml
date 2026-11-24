@@ -1,0 +1,42 @@
+name: CI for Asteroid Risk Tracker
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements/api.txt -r requirements/dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Run tests
+        run: pytest -v
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Build the API image
+        run: docker build -f docker/Dockerfile.api -t asteroid-api:ci .
+
+      - name: Build the dashboard image
+        run: docker build -f docker/Dockerfile.dashboard -t asteroid-dashboard:ci .
+
+      - name: Build the Airflow image
+        run: docker build -f docker/Dockerfile.airflow -t asteroid-airflow:ci .

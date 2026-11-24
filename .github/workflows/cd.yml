@@ -1,0 +1,39 @@
+name: CD for Asteroid Risk Tracker
+
+on:
+  push:
+    branches: [master, main]
+
+jobs:
+  cd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements/api.txt -r requirements/dev.txt
+
+      - name: Linter
+        run: ruff check .
+
+      - name: Unit tests
+        run: pytest -v
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push the images
+        run: |
+          docker build -f docker/Dockerfile.api -t ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-api:latest .
+          docker build -f docker/Dockerfile.dashboard -t ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-dashboard:latest .
+          docker build -f docker/Dockerfile.airflow -t ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-airflow:latest .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-api:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-dashboard:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-airflow:latest

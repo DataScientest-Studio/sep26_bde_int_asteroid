@@ -6,7 +6,7 @@ Here we include a function named 'load_data' which can be called when building a
 import os
 from dotenv import load_dotenv
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 
 PY_FILE = os.path.dirname(os.path.abspath(__file__))
 SQL_FILE = os.path.join(PY_FILE, "..", "sql", "dataset.sql")
@@ -34,5 +34,6 @@ def load_data():
 
 if __name__ == "__main__":
     df = load_data()
+    print(f.closed)
     print("Number of rows and columns are: ", df.shape)
     print("\nColumns: ", list(df.columns))

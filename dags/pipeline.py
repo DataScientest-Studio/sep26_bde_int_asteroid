@@ -27,7 +27,7 @@ with DAG(
     description="Loads raw data into MongoDB and PostgreSQL and score objects using ML",
     default_args=default_args,
     start_date=pendulum.datetime(2026, 11, 1, tz="Europe/Berlin"),
-    schedule="0 10 * * *",
+    schedule="30 9 * * *",
     catchup=False,
     max_active_runs=1,
     tags=["asteroid"],
