@@ -15,10 +15,6 @@ Project Organization
     │   ├── raw                         <- The original, immutable data dump.
     │   └── samples                     <- Sample data
     │
-    |
-    ├── logs                        <- Logs from scheduled run to fetch data
-    |    └── fetch.log               
-    │ 
     |   
     ├── notebooks                   <- Jupyter notebooks used to explore
     │   ├── eda.ipynb                   <- Data exploration
@@ -62,6 +58,10 @@ Project Organization
     |
     |
     └── requirements/               <- The requirements file for reproducing the analysis 
+    |   |    ├── airflow.txt           
+    │   |    ├── api.txt         
+    │   |    ├── dashboard.txt                   
+    │   |    └── ingest.txt
    
 
     
