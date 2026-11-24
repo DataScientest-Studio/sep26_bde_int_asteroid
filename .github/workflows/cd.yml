@@ -23,14 +23,14 @@ jobs:
       - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: satyad18
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push the images
         run: |
-          docker build -f docker/Dockerfile.api -t ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-api:latest .
-          docker build -f docker/Dockerfile.dashboard -t ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-dashboard:latest .
-          docker build -f docker/Dockerfile.airflow -t ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-airflow:latest .
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-api:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-dashboard:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/asteroid-airflow:latest
+          docker build -f docker/Dockerfile.api -t satyad18/asteroid-api:latest .
+          docker build -f docker/Dockerfile.dashboard -t satyad18/asteroid-dashboard:latest .
+          docker build -f docker/Dockerfile.airflow -t satyad18/asteroid-airflow:latest .
+          docker push satyad18/asteroid-api:latest
+          docker push satyad18/asteroid-dashboard:latest
+          docker push satyad18/asteroid-airflow:latest
