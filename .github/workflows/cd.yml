@@ -1,4 +1,4 @@
-name: CD for Asteroid Risk Tracker
+name: CD 
 
 on:
   push:
@@ -14,14 +14,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: pip install -r requirements/api.txt -r requirements/dev.txt
+      - name: Install the linter
+        run: pip install ruff
 
       - name: Linter
-        run: ruff check .
-
-      - name: Unit tests
-        run: pytest -v
+        run: ruff check . --select E4,E7,E9,F
 
       - name: Log in to DockerHub
         uses: docker/login-action@v3

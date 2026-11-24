@@ -51,6 +51,8 @@ coverage.xml
 
 # Django stuff:
 *.log
+.ruff_cache/
+.pytest_cache/
 
 # Sphinx documentation
 docs/_build/
